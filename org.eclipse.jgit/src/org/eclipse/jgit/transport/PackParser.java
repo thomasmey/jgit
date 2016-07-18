@@ -737,7 +737,7 @@ public abstract class PackParser {
 		case Constants.OBJ_OFS_DELTA:
 			c = readFrom(Source.DATABASE);
 			hdrBuf[hdrPtr++] = (byte) c;
-			while ((c & 128) != 0) {
+			while ((c & 0x80) != 0) {
 				c = readFrom(Source.DATABASE);
 				hdrBuf[hdrPtr++] = (byte) c;
 			}
@@ -955,19 +955,19 @@ public abstract class PackParser {
 		case Constants.OBJ_OFS_DELTA: {
 			c = readFrom(Source.INPUT);
 			hdrBuf[hdrPtr++] = (byte) c;
-			long ofs = c & 127;
-			while ((c & 128) != 0) {
+			long ofs = c & 0x7f;
+			while ((c & 0x80) != 0) {
 				ofs += 1;
 				c = readFrom(Source.INPUT);
 				hdrBuf[hdrPtr++] = (byte) c;
 				ofs <<= 7;
-				ofs += (c & 127);
+				ofs += (c & 0x7f);
 			}
 			final long base = streamPosition - ofs;
 			onBeginOfsDelta(streamPosition, base, sz);
 			onObjectHeader(Source.INPUT, hdrBuf, 0, hdrPtr);
 			inflateAndSkip(Source.INPUT, sz);
-			UnresolvedDelta n = onEndDelta();
+			UnresolvedDelta n = onEndDelta(streamPosition());
 			n.position = streamPosition;
 			n.next = baseByPos.put(base, n);
 			deltaCount++;
@@ -988,7 +988,7 @@ public abstract class PackParser {
 			onBeginRefDelta(streamPosition, base, sz);
 			onObjectHeader(Source.INPUT, hdrBuf, 0, hdrPtr);
 			inflateAndSkip(Source.INPUT, sz);
-			UnresolvedDelta n = onEndDelta();
+			UnresolvedDelta n = onEndDelta(streamPosition());
 			n.position = streamPosition;
 			r.add(n);
 			deltaCount++;
@@ -1037,7 +1037,7 @@ public abstract class PackParser {
 
 		PackedObjectInfo obj = newInfo(tempObjectId, null, null);
 		obj.setOffset(pos);
-		onEndWholeObject(obj);
+		onEndWholeObject(obj, streamPosition());
 		if (data != null)
 			onInflatedObjectData(obj, type, data);
 		addObjectAndTrack(obj);
@@ -1393,7 +1393,7 @@ public abstract class PackParser {
 	 *
 	 * @param delta
 	 *            the object position to begin reading from. This is an instance
-	 *            previously returned by {@link #onEndDelta()}.
+	 *            previously returned by {@link #onEndDelta(long)}.
 	 * @param info
 	 *            object to populate with type and size.
 	 * @return the {@code info} object.
@@ -1461,10 +1461,11 @@ public abstract class PackParser {
 	 *
 	 *@param info
 	 *            object information.
+	 * @param streamPosition TODO
 	 * @throws IOException
 	 *             the object cannot be recorded.
 	 */
-	protected abstract void onEndWholeObject(PackedObjectInfo info)
+	protected abstract void onEndWholeObject(PackedObjectInfo info, long streamPosition)
 			throws IOException;
 
 	/**
@@ -1506,13 +1507,14 @@ public abstract class PackParser {
 
 	/**
 	 * Event notifying the the current object.
+	 * @param streamPosition TODO
 	 *
 	 *@return object information that must be populated with at least the
 	 *         offset.
 	 * @throws IOException
 	 *             the object cannot be recorded.
 	 */
-	protected UnresolvedDelta onEndDelta() throws IOException {
+	protected UnresolvedDelta onEndDelta(long streamPosition) throws IOException {
 		return new UnresolvedDelta();
 	}
 

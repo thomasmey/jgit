@@ -230,7 +230,7 @@ public class ObjectDirectoryPackParser extends PackParser {
 	}
 
 	@Override
-	protected void onEndWholeObject(PackedObjectInfo info) throws IOException {
+	protected void onEndWholeObject(PackedObjectInfo info, long streamPosition) throws IOException {
 		info.setCRC((int) crc.getValue());
 	}
 
@@ -247,7 +247,7 @@ public class ObjectDirectoryPackParser extends PackParser {
 	}
 
 	@Override
-	protected UnresolvedDelta onEndDelta() throws IOException {
+	protected UnresolvedDelta onEndDelta(long streamPosition) throws IOException {
 		UnresolvedDelta delta = new UnresolvedDelta();
 		delta.setCRC((int) crc.getValue());
 		return delta;
